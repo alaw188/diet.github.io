@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>飲食記錄</title>
+<style>
+  :root {
+    --ios-bg: #f2f2f7;
+    --ios-card: #ffffff;
+    --ios-grouped-label: #6d6d72;
+    --ios-separator: rgba(60, 60, 67, 0.18);
+    --ios-blue: #007aff;
+    --ios-green: #34c759;
+    --ios-red: #ff3b30;
+    --ios-orange: #ff9500;
+    --ios-yellow: #ffcc00;
+    --ios-gray: #8e8e93;
+    --ios-gray2: #aeaeb2;
+    --ios-label: #1c1c1e;
+    --ios-secondary: #8a8a8e;
+    --nav-blur: saturate(180%) blur(20px);
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body {
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang HK", "Helvetica Neue", sans-serif;
+    background: #000;
+    color: var(--ios-label);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Phone frame */
+  #app {
+    position: relative;
+    width: 100%;
+    max-width: 430px;
+    height: 100%;
+    max-height: 932px;
+    background: var(--ios-bg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  @media (min-width: 460px) {
+    body { background: #1c1c1e; }
+    #app {
+      border-radius: 44px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      height: 92vh;
+    }
+  }
+
+  /* ===== Nav Bar ===== */
+  #navbar {
+    position: relative;
+    z-index: 50;
+    flex-shrink: 0;
+    padding: calc(var(--safe-top) + 10px) 16px 10px;
+    background: rgba(248, 248, 248, 0.82);
+    -webkit-backdrop-filter: var(--nav-blur);
+    backdrop-filter: var(--nav-blur);
+    border-bottom: 0.5px solid var(--ios-separator);
+  }
+  .nav-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .nav-title-wrap { flex: 1; min-width: 0; }
+  .nav-date {
+    font-size: 13px;
+    color: var(--ios-secondary);
+    font-weight: 500;
+  }
+  .nav-title {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.4px;
+    line-height: 1.15;
+  }
+  .nav-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .ai-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 9px;
+    border-radius: 20px;
+    background: rgba(0, 122, 255, 0.12);
+    color: var(--ios-blue);
+    white-space: nowrap;
+  }
+  .ai-badge.warn {
+    background: rgba(255, 149, 0, 0.16);
+    color: var(--ios-orange);
+  }
+  #backToday {
+    display: none;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ios-blue);
+    background: rgba(0,122,255,0.1);
+    border: none;
+    padding: 4px 10px;
+    border-radius: 16px;
+    cursor: pointer;
+  }
+  #backToday.show { display: block; }
+
+  /* ===== Pages ===== */
+  #pages {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .page { display: none; padding: 18px 16px 28px; }
+  .page.active { display: block; animation: fade 0.25s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px);} to {opacity:1; transform: none;} }
+
+  /* Grouped section */
+  .group-label {
+    font-size: 13px;
+    color: var(--ios-grouped-label);
+    text-transform: uppercase;
+    letter-spacing: 0.2px;
+    margin: 4px 0 7px 16px;
+    font-weight: 500;
+  }
+  .card {
+    background: var(--ios-card);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 0.5px 0 rgba(0,0,0,0.04);
+    margin-bottom: 22px;
+  }
+  .card.pad { padding: 16px; }
+
+  .row {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    min-height: 48px;
+    position: relative;
+  }
+  .row + .row::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 16px; right: 0;
+    height: 0.5px;
+    background: var(--ios-separator);
+  }
+  .row-label { font-size: 17px; flex: 1; white-space: nowrap; }
+  .row input[type="date"] { flex-shrink: 0; width: auto; min-width: 130px; }
+  .row-value { color: var(--ios-secondary); font-size: 17px; }
+
+  /* Inputs */
+  textarea, input, select {
+    font-family: inherit;
+    font-size: 17px;
+    color: var(--ios-label);
+    border: none;
+    outline: none;
+    background: transparent;
+    width: 100%;
+  }
+  textarea {
+    min-height: 130px;
+    resize: none;
+    line-height: 1.5;
+  }
+  .field-input {
+    text-align: right;
+    width: 110px;
+    color: var(--ios-blue);
+    font-weight: 500;
+  }
+  select.field-input { -webkit-appearance: none; appearance: none; }
+  input[type="date"] { -webkit-appearance: none; appearance: none; color: var(--ios-blue); font-weight:500; text-align:right; }
+  input[type="password"], input[type="text"].pw { text-align: right; color: var(--ios-blue); font-family: monospace; }
+
+  /* Buttons */
+  .btn {
+    display: block;
+    width: 100%;
+    border: none;
+    border-radius: 12px;
+    padding: 15px;
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .btn:active { opacity: 0.6; transform: scale(0.99); }
+  .btn-blue { background: var(--ios-blue); color: #fff; }
+  .btn-red { background: rgba(255,59,48,0.1); color: var(--ios-red); }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+
+  .hint { font-size: 13px; color: var(--ios-secondary); margin: 8px 6px 0; line-height: 1.4; }
+
+  /* Spinner */
+  .spinner {
+    display: inline-block;
+    width: 18px; height: 18px;
+    border: 2.5px solid rgba(255,255,255,0.35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: -3px;
+    margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg);} }
+
+  /* ===== Dashboard ===== */
+  .dash {
+    display: flex;
+    gap: 14px;
+    align-items: stretch;
+  }
+  .dash-left { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 16px; }
+  .metric-label { font-size: 13px; color: var(--ios-secondary); display:flex; justify-content: space-between; margin-bottom: 6px; }
+  .metric-label b { color: var(--ios-label); font-weight: 600; }
+  .bar { height: 8px; background: var(--ios-bg); border-radius: 6px; overflow: hidden; }
+  .bar > div { height: 100%; border-radius: 6px; width: 0; transition: width 0.8s cubic-bezier(.2,.8,.2,1); }
+  .bar-cal > div { background: var(--ios-green); }
+  .bar-fat > div { background: var(--ios-orange); }
+  .dash-right { width: 132px; display:flex; align-items:center; justify-content:center; position: relative; }
+  .ring-center {
+    position: absolute;
+    text-align: center;
+  }
+  .ring-center .pct { font-size: 26px; font-weight: 700; }
+  .ring-center .pct small { font-size: 13px; font-weight: 600; }
+  .ring-center .lbl { font-size: 10px; color: var(--ios-secondary); margin-top: 2px; }
+
+  /* Food list */
+  .food-row { display: flex; align-items: center; padding: 12px 14px 12px 16px; position: relative; }
+  .food-row + .food-row::before { content:""; position:absolute; top:0; left:16px; right:0; height:0.5px; background: var(--ios-separator); }
+  .food-info { flex: 1; min-width: 0; }
+  .food-name { font-size: 17px; font-weight: 500; }
+  .food-sub { font-size: 13px; color: var(--ios-secondary); margin-top: 2px; }
+  .food-sub .dot { margin: 0 5px; }
+  .del-btn {
+    flex-shrink: 0;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    border: none;
+    background: var(--ios-gray2);
+    color: #fff;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    margin-left: 10px;
+  }
+  .del-btn:active { background: var(--ios-red); }
+
+  .empty {
+    text-align: center;
+    padding: 50px 20px;
+    color: var(--ios-secondary);
+  }
+  .empty .ico { font-size: 44px; opacity: 0.4; }
+  .empty .txt { margin-top: 12px; font-size: 15px; }
+
+  .preview-num { font-size: 30px; font-weight: 700; letter-spacing: -0.5px; }
+  .preview-flex { display: flex; gap: 14px; }
+  .preview-flex .card { flex:1; margin:0; }
+
+  /* ===== Tab Bar ===== */
+  #tabbar {
+    flex-shrink: 0;
+    display: flex;
+    background: rgba(248, 248, 248, 0.86);
+    -webkit-backdrop-filter: var(--nav-blur);
+    backdrop-filter: var(--nav-blur);
+    border-top: 0.5px solid var(--ios-separator);
+    padding-bottom: var(--safe-bottom);
+  }
+  .tab {
+    flex: 1;
+    border: none;
+    background: none;
+    padding: 7px 0 6px;
+    cursor: pointer;
+    color: var(--ios-gray);
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    font-family: inherit;
+  }
+  .tab svg { width: 26px; height: 26px; }
+  .tab .tlabel { font-size: 10px; font-weight: 500; }
+  .tab.active { color: var(--ios-blue); }
+
+  /* Toast */
+  #toast {
+    position: absolute;
+    left: 50%; bottom: 86px;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(0,0,0,0.82);
+    color: #fff;
+    padding: 11px 18px;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 500;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s;
+    z-index: 100;
+    max-width: 80%;
+    text-align: center;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Modal */
+  #modal {
+    position: absolute;
+    inset: 0;
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.35);
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+  }
+  #modal.show { display: flex; }
+  .modal-box {
+    width: 270px;
+    background: rgba(250,250,250,0.94);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    border-radius: 14px;
+    overflow: hidden;
+    text-align: center;
+    animation: pop 0.2s ease;
+  }
+  @keyframes pop { from { transform: scale(0.9); opacity: 0;} to {transform: none; opacity: 1;} }
+  .modal-box .mtitle { font-size: 17px; font-weight: 600; padding: 18px 16px 4px; }
+  .modal-box .mtext { font-size: 13px; color: #333; padding: 0 16px 16px; }
+  .modal-btns { display: flex; border-top: 0.5px solid var(--ios-separator); }
+  .modal-btns button {
+    flex: 1; border: none; background: none; padding: 12px;
+    font-size: 17px; cursor: pointer; font-family: inherit;
+    color: var(--ios-blue);
+  }
+  .modal-btns button + button { border-left: 0.5px solid var(--ios-separator); }
+  .modal-btns button.danger { color: var(--ios-red); font-weight: 600; }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- Nav Bar -->
+  <header id="navbar">
+    <div class="nav-row">
+      <div class="nav-title-wrap">
+        <div class="nav-date" id="navDate">—</div>
+        <div class="nav-title" id="navTitle">記低嘢食</div>
+      </div>
+      <div class="nav-right">
+        <span class="ai-badge" id="aiBadge">AI 核心</span>
+        <button id="backToday">返回今日</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Pages -->
+  <main id="pages">
+
+    <!-- ===== TAB 1: Input ===== -->
+    <section class="page active" id="page1">
+      <div class="group-label">用口語記低你食咗咩</div>
+      <div class="card pad">
+        <textarea id="foodInput" placeholder="例如：lunch食咗一碟乾炒牛河，同一杯凍檸茶少甜，仲有兩件炸雞翼…"></textarea>
+      </div>
+      <button class="btn btn-blue" id="analyzeBtn">AI 智能分析</button>
+      <p class="hint">AI 會扮演註冊營養師，自動拆解你嘅食物並估算卡路里同脂肪。請先喺「歷史月曆」頁設定 API Key。</p>
+    </section>
+
+    <!-- ===== TAB 2: Progress ===== -->
+    <section class="page" id="page2">
+      <div class="group-label">當日進度</div>
+      <div class="card pad">
+        <div class="dash">
+          <div class="dash-left">
+            <div>
+              <div class="metric-label"><span>卡路里</span><span><b id="calNow">0</b> / <span id="calGoal">1800</span></span></div>
+              <div class="bar bar-cal"><div id="calBar"></div></div>
+            </div>
+            <div>
+              <div class="metric-label"><span>脂肪 (g)</span><span><b id="fatNow">0</b> / <span id="fatGoal">60</span></span></div>
+              <div class="bar bar-fat"><div id="fatBar"></div></div>
+            </div>
+          </div>
+          <div class="dash-right">
+            <svg width="132" height="132" viewBox="0 0 132 132">
+              <circle cx="66" cy="66" r="56" fill="none" stroke="rgba(52,199,89,0.15)" stroke-width="11"/>
+              <circle cx="66" cy="66" r="40" fill="none" stroke="rgba(255,149,0,0.15)" stroke-width="11"/>
+              <circle id="ringCal" cx="66" cy="66" r="56" fill="none" stroke="var(--ios-green)" stroke-width="11"
+                      stroke-linecap="round" transform="rotate(-90 66 66)" stroke-dasharray="351.86" stroke-dashoffset="351.86"
+                      style="transition: stroke-dashoffset 0.9s cubic-bezier(.2,.8,.2,1);"/>
+              <circle id="ringFat" cx="66" cy="66" r="40" fill="none" stroke="var(--ios-orange)" stroke-width="11"
+                      stroke-linecap="round" transform="rotate(-90 66 66)" stroke-dasharray="251.33" stroke-dashoffset="251.33"
+                      style="transition: stroke-dashoffset 0.9s cubic-bezier(.2,.8,.2,1);"/>
+            </svg>
+            <div class="ring-center">
+              <div class="pct" id="ringPct">0<small>%</small></div>
+              <div class="lbl">卡路里達成</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="group-label">當日清單</div>
+      <div class="card" id="foodList"></div>
+
+      <button class="btn btn-red" id="clearDayBtn">清空當日記錄</button>
+    </section>
+
+    <!-- ===== TAB 3: Calendar & Settings ===== -->
+    <section class="page" id="page3">
+      <div class="group-label">選擇日期</div>
+      <div class="card">
+        <div class="row">
+          <span class="row-label">記錄日期</span>
+          <input type="date" id="datePicker" />
+        </div>
+      </div>
+
+      <div class="group-label">選定日期數據預覽</div>
+      <div class="preview-flex">
+        <div class="card pad">
+          <div class="preview-num" id="pvCal">0</div>
+          <div class="metric-label" style="margin:4px 0 0;"><span>總卡路里</span></div>
+        </div>
+        <div class="card pad">
+          <div class="preview-num" id="pvCount">0</div>
+          <div class="metric-label" style="margin:4px 0 0;"><span>項目數</span></div>
+        </div>
+      </div>
+
+      <div class="group-label">智能核心引擎</div>
+      <div class="card">
+        <div class="row">
+          <span class="row-label">引擎</span>
+          <select class="field-input" id="engineSel">
+            <option value="gemini">Google Gemini</option>
+            <option value="deepseek">DeepSeek V4 Flash</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="group-label">每日目標</div>
+      <div class="card">
+        <div class="row">
+          <span class="row-label">目標卡路里</span>
+          <input type="number" class="field-input" id="goalCal" inputmode="numeric" />
+        </div>
+        <div class="row">
+          <span class="row-label">目標脂肪 (g)</span>
+          <input type="number" class="field-input" id="goalFat" inputmode="numeric" />
+        </div>
+      </div>
+
+      <div class="group-label">API 金鑰</div>
+      <div class="card">
+        <div class="row">
+          <span class="row-label">Gemini Key</span>
+          <input type="password" class="field-input pw" id="geminiKey" placeholder="未設定" />
+        </div>
+        <div class="row">
+          <span class="row-label">DeepSeek Key</span>
+          <input type="password" class="field-input pw" id="deepseekKey" placeholder="未設定" />
+        </div>
+      </div>
+      <p class="hint">所有設定及金鑰只儲存喺你嘅瀏覽器 (LocalStorage)，唔會上傳到任何伺服器。</p>
+    </section>
+  </main>
+
+  <!-- Tab Bar -->
+  <nav id="tabbar">
+    <button class="tab active" data-tab="1">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      <span class="tlabel">記低嘢食</span>
+    </button>
+    <button class="tab" data-tab="2">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18M7 14l4-4 3 3 5-6"/></svg>
+      <span class="tlabel">查看進度</span>
+    </button>
+    <button class="tab" data-tab="3">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      <span class="tlabel">歷史月曆</span>
+    </button>
+  </nav>
+
+  <div id="toast"></div>
+
+  <!-- Modal -->
+  <div id="modal">
+    <div class="modal-box">
+      <div class="mtitle" id="modalTitle">確認</div>
+      <div class="mtext" id="modalText"></div>
+      <div class="modal-btns">
+        <button id="modalCancel">取消</button>
+        <button id="modalOk" class="danger">確定</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ============ State & Storage ============ */
+const STORE_KEY = "diet_records_v1";
+const CFG_KEY = "diet_config_v1";
+
+const defaultCfg = {
+  engine: "gemini",
+  goalCal: 1800,
+  goalFat: 60,
+  geminiKey: "",
+  deepseekKey: ""
+};
+
+let records = {};   // { "2026-06-22": [ {name, calories, fat}, ... ] }
+let config = { ...defaultCfg };
+let selectedDate = todayStr();
+let currentTab = 1;
+
+function todayStr() {
+  const d = new Date();
+  const off = d.getTimezoneOffset() * 60000;
+  return new Date(d - off).toISOString().slice(0, 10);
+}
+
+function loadStore() {
+  try {
+    const r = localStorage.getItem(STORE_KEY);
+    records = r ? JSON.parse(r) : {};
+    if (typeof records !== "object" || records === null) records = {};
+  } catch { records = {}; }
+  try {
+    const c = localStorage.getItem(CFG_KEY);
+    config = c ? { ...defaultCfg, ...JSON.parse(c) } : { ...defaultCfg };
+  } catch { config = { ...defaultCfg }; }
+}
+function saveRecords() { try { localStorage.setItem(STORE_KEY, JSON.stringify(records)); } catch (e) { toast("儲存失敗"); } }
+function saveConfig() { try { localStorage.setItem(CFG_KEY, JSON.stringify(config)); } catch (e) {} }
+
+function getDay(date) { return records[date] || []; }
+
+/* ============ Helpers ============ */
+const $ = (id) => document.getElementById(id);
+
+function fmtDate(str) {
+  const [y, m, d] = str.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  const wk = ["日","一","二","三","四","五","六"][dt.getDay()];
+  return `${y}年${m}月${d}日 星期${wk}`;
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+/* Confirm modal */
+let modalResolve = null;
+function confirmModal(title, text) {
+  return new Promise((resolve) => {
+    $("modalTitle").textContent = title;
+    $("modalText").textContent = text;
+    $("modal").classList.add("show");
+    modalResolve = resolve;
+  });
+}
+$("modalCancel").onclick = () => { $("modal").classList.remove("show"); modalResolve && modalResolve(false); };
+$("modalOk").onclick = () => { $("modal").classList.remove("show"); modalResolve && modalResolve(true); };
+
+/* ============ Rendering ============ */
+function isToday() { return selectedDate === todayStr(); }
+
+function renderNav() {
+  $("navDate").textContent = fmtDate(selectedDate);
+  const titles = { 1: "記低嘢食", 2: "查看進度", 3: "歷史月曆" };
+  $("navTitle").textContent = titles[currentTab];
+
+  const engineName = config.engine === "gemini" ? "Gemini" : "DeepSeek";
+  const badge = $("aiBadge");
+  if (isToday()) {
+    badge.textContent = "核心：" + engineName;
+    badge.classList.remove("warn");
+    $("backToday").classList.remove("show");
+  } else {
+    badge.textContent = "補填模式";
+    badge.classList.add("warn");
+    $("backToday").classList.add("show");
+  }
+}
+
+function renderDashboard() {
+  const day = getDay(selectedDate);
+  const totalCal = day.reduce((s, f) => s + (Number(f.calories) || 0), 0);
+  const totalFat = day.reduce((s, f) => s + (Number(f.fat) || 0), 0);
+  const gCal = Number(config.goalCal) || 1800;
+  const gFat = Number(config.goalFat) || 60;
+
+  $("calNow").textContent = Math.round(totalCal);
+  $("fatNow").textContent = Math.round(totalFat);
+  $("calGoal").textContent = gCal;
+  $("fatGoal").textContent = gFat;
+
+  const calPct = Math.min(totalCal / gCal, 1);
+  const fatPct = Math.min(totalFat / gFat, 1);
+
+  $("calBar").style.width = (calPct * 100) + "%";
+  $("fatBar").style.width = (fatPct * 100) + "%";
+  $("calBar").style.background = totalCal > gCal ? "var(--ios-red)" : "var(--ios-green)";
+  $("fatBar").style.background = totalFat > gFat ? "var(--ios-red)" : "var(--ios-orange)";
+
+  const circCal = 2 * Math.PI * 56;
+  const circFat = 2 * Math.PI * 40;
+  $("ringCal").style.strokeDashoffset = circCal * (1 - calPct);
+  $("ringFat").style.strokeDashoffset = circFat * (1 - fatPct);
+  const pctTxt = Math.round((totalCal / gCal) * 100);
+  $("ringPct").innerHTML = pctTxt + "<small>%</small>";
+}
+
+function renderList() {
+  const day = getDay(selectedDate);
+  const list = $("foodList");
+  if (day.length === 0) {
+    list.innerHTML = `<div class="empty"><div class="ico">🍽️</div><div class="txt">今日仲未記錄任何食物<br/>去「記低嘢食」開始啦！</div></div>`;
+    return;
+  }
+  list.innerHTML = day.map((f, i) => `
+    <div class="food-row">
+      <div class="food-info">
+        <div class="food-name">${escapeHtml(f.name)}</div>
+        <div class="food-sub">${Math.round(Number(f.calories)||0)} kcal<span class="dot">·</span>脂肪 ${Math.round(Number(f.fat)||0)}g</div>
+      </div>
+      <button class="del-btn" data-i="${i}" aria-label="刪除">&times;</button>
+    </div>`).join("");
+
+  list.querySelectorAll(".del-btn").forEach(b => {
+    b.onclick = () => {
+      const i = Number(b.dataset.i);
+      records[selectedDate].splice(i, 1);
+      if (records[selectedDate].length === 0) delete records[selectedDate];
+      saveRecords();
+      renderAll();
+      toast("已刪除");
+    };
+  });
+}
+
+function renderPreview() {
+  const day = getDay(selectedDate);
+  const totalCal = day.reduce((s, f) => s + (Number(f.calories) || 0), 0);
+  $("pvCal").textContent = Math.round(totalCal);
+  $("pvCount").textContent = day.length;
+}
+
+function renderSettings() {
+  $("engineSel").value = config.engine;
+  $("goalCal").value = config.goalCal;
+  $("goalFat").value = config.goalFat;
+  $("geminiKey").value = config.geminiKey;
+  $("deepseekKey").value = config.deepseekKey;
+  $("datePicker").value = selectedDate;
+}
+
+function renderAll() {
+  renderNav();
+  renderDashboard();
+  renderList();
+  renderPreview();
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+
+/* ============ Tabs ============ */
+function switchTab(n) {
+  currentTab = n;
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", Number(t.dataset.tab) === n));
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  $("page" + n).classList.add("active");
+  $("pages").scrollTop = 0;
+  renderAll();
+}
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => switchTab(Number(t.dataset.tab)));
+
+$("backToday").onclick = () => {
+  selectedDate = todayStr();
+  $("datePicker").value = selectedDate;
+  renderAll();
+  toast("已返回今日");
+};
+
+/* ============ Settings bindings ============ */
+$("engineSel").onchange = (e) => { config.engine = e.target.value; saveConfig(); renderNav(); };
+$("goalCal").oninput = (e) => { config.goalCal = Number(e.target.value) || 0; saveConfig(); renderDashboard(); };
+$("goalFat").oninput = (e) => { config.goalFat = Number(e.target.value) || 0; saveConfig(); renderDashboard(); };
+$("geminiKey").oninput = (e) => { config.geminiKey = e.target.value.trim(); saveConfig(); };
+$("deepseekKey").oninput = (e) => { config.deepseekKey = e.target.value.trim(); saveConfig(); };
+$("datePicker").onchange = (e) => {
+  if (!e.target.value) return;
+  selectedDate = e.target.value;
+  renderAll();
+  toast("已切換到 " + selectedDate);
+};
+
+/* ============ Clear day ============ */
+$("clearDayBtn").onclick = async () => {
+  if (getDay(selectedDate).length === 0) { toast("當日無記錄"); return; }
+  const ok = await confirmModal("清空當日記錄", `確定要刪除 ${selectedDate} 的所有飲食記錄嗎？此操作無法復原。`);
+  if (ok) {
+    delete records[selectedDate];
+    saveRecords();
+    renderAll();
+    toast("已清空當日");
+  }
+};
+
+/* ============ AI Analysis ============ */
+const SYSTEM_PROMPT = `你是一位專業的香港註冊營養師。用戶會用廣東話口語描述佢食咗嘅嘢。請將描述中嘅每樣食物/飲品拆解成獨立項目，並估算每項嘅卡路里(calories)同脂肪克數(fat)。
+嚴格要求：只回傳一個標準 JSON Array，唔好有任何其他文字、解釋或 Markdown 標記。
+格式必須係：[{"name":"食物名(中文)","calories":數字,"fat":數字}]
+calories 同 fat 必須係純數字(唔好帶單位)。如果用戶輸入無法辨識食物，回傳空陣列 []。`;
+
+function cleanJson(text) {
+  if (!text) return "[]";
+  let t = text.trim();
+  // remove markdown code fences
+  t = t.replace(/```json/gi, "").replace(/```/g, "").trim();
+  // extract array portion
+  const start = t.indexOf("[");
+  const end = t.lastIndexOf("]");
+  if (start !== -1 && end !== -1 && end > start) {
+    t = t.slice(start, end + 1);
+  }
+  return t;
+}
+
+async function callGemini(userText) {
+  const key = config.geminiKey;
+  if (!key) throw new Error("未設定 Gemini API Key");
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(key)}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      contents: [{ role: "user", parts: [{ text: userText }] }],
+      generationConfig: { temperature: 0.4, responseMimeType: "application/json" }
+    })
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    throw new Error(`Gemini 錯誤 (${res.status})：${err.slice(0, 120)}`);
+  }
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error("Gemini 無回傳內容");
+  return text;
+}
+
+async function callDeepSeek(userText) {
+  const key = config.deepseekKey;
+  if (!key) throw new Error("未設定 DeepSeek API Key");
+  const res = await fetch("https://api.deepseek.com/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+    body: JSON.stringify({
+      model: "deepseek-chat",
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: userText }
+      ],
+      temperature: 0.4,
+      response_format: { type: "json_object" }
+    })
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    throw new Error(`DeepSeek 錯誤 (${res.status})：${err.slice(0, 120)}`);
+  }
+  const data = await res.json();
+  const text = data?.choices?.[0]?.message?.content;
+  if (!text) throw new Error("DeepSeek 無回傳內容");
+  return text;
+}
+
+$("analyzeBtn").onclick = async () => {
+  const input = $("foodInput").value.trim();
+  if (!input) { toast("請先輸入你食咗咩"); return; }
+
+  const btn = $("analyzeBtn");
+  const origHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner"></span>AI 分析中…`;
+
+  try {
+    let raw;
+    if (config.engine === "gemini") raw = await callGemini(input);
+    else raw = await callDeepSeek(input);
+
+    const cleaned = cleanJson(raw);
+    let parsed;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch (pe) {
+      // DeepSeek json_object may wrap in {items:[...]} — try to find array inside object
+      try {
+        const obj = JSON.parse(raw.replace(/```json/gi,"").replace(/```/g,"").trim());
+        parsed = Array.isArray(obj) ? obj : (obj.items || obj.foods || obj.data || obj.result);
+      } catch {
+        throw new Error("AI 回傳格式無法解析，請再試一次");
+      }
+    }
+
+    if (!Array.isArray(parsed)) throw new Error("AI 回傳唔係有效列表");
+    const items = parsed
+      .filter(x => x && typeof x === "object" && x.name)
+      .map(x => ({ name: String(x.name), calories: Number(x.calories) || 0, fat: Number(x.fat) || 0 }));
+
+    if (items.length === 0) { toast("AI 認唔到食物，試下講清楚啲"); return; }
+
+    if (!records[selectedDate]) records[selectedDate] = [];
+    records[selectedDate].push(...items);
+    saveRecords();
+    $("foodInput").value = "";
+    toast(`已加入 ${items.length} 項食物`);
+    switchTab(2);
+  } catch (e) {
+    console.log("[v0] analyze error:", e.message);
+    toast(e.message || "分析失敗，請檢查網絡或 API Key");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = origHtml;
+  }
+};
+
+/* ============ Init ============ */
+loadStore();
+selectedDate = todayStr();
+renderSettings();
+switchTab(1);
+</script>
+</body>
+</html>
