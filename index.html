@@ -235,6 +235,38 @@
   .btn-red { background: var(--red-tint); color: var(--red); }
   .btn:disabled { opacity: 0.55; cursor: default; box-shadow: none; }
 
+  /* Mode Buttons */
+  .mode-btn {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid var(--hairline);
+    background: var(--bg-elevated);
+    color: var(--secondary);
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .mode-btn:active { transform: scale(0.98); }
+  .mode-btn-active {
+    background: var(--brand);
+    color: #fff;
+    border-color: var(--brand);
+  }
+
+  /* Photo Preview */
+  #photoPreview {
+    max-width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  #photoPreview img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
   .hint { font-size: 12.5px; color: var(--secondary); margin: 12px 6px 0; line-height: 1.5; }
 
   /* Spinner */
@@ -421,9 +453,27 @@
     <!-- ===== TAB 1: Input ===== -->
     <section class="page active" id="page1">
       <div class="group-label">用口語記低你食咗咩</div>
-      <div class="card pad">
+      
+      <!-- Mode Toggle -->
+      <div class="card pad" style="display: flex; gap: 8px; margin-bottom: 12px;">
+        <button class="mode-btn mode-btn-active" id="textModeBtn">文字輸入</button>
+        <button class="mode-btn" id="photoModeBtn">拍照識別</button>
+      </div>
+
+      <!-- Text Input Mode -->
+      <div id="textMode" class="card pad">
         <textarea id="foodInput" placeholder="例如：lunch食咗一碟乾炒牛河，同一杯凍檸茶少甜，仲有兩件炸雞翼…"></textarea>
       </div>
+
+      <!-- Photo Input Mode (hidden by default) -->
+      <div id="photoMode" style="display: none;">
+        <div class="card pad">
+          <input type="file" id="photoInput" accept="image/*" capture="environment" style="margin-bottom: 12px;">
+          <div id="photoPreview" style="margin-bottom: 12px;"></div>
+          <textarea id="photoRemarks" placeholder="添加備註說明（可選），例如：飯量較少、少油…" style="min-height: 80px;"></textarea>
+        </div>
+      </div>
+
       <button class="btn btn-blue" id="analyzeBtn">AI 智能分析</button>
       <p class="hint">AI 會扮演註冊營養師，自動拆解你嘅食物並估算卡路里同脂肪。請先喺「歷史月曆」頁設定 API Key。</p>
     </section>
@@ -692,13 +742,13 @@ function renderList() {
     return;
   }
   list.innerHTML = day.map((f, i) => `
-    <div class="food-row">
-      <div class="food-info">
-        <div class="food-name">${escapeHtml(f.name)}</div>
-        <div class="food-sub">${Math.round(Number(f.calories)||0)} kcal<span class="dot">·</span>脂肪 ${Math.round(Number(f.fat)||0)}g</div>
-      </div>
-      <button class="del-btn" data-i="${i}" aria-label="刪除">&times;</button>
-    </div>`).join("");
+  <div class="food-row">
+  <div class="food-info">
+  <div class="food-name">${escapeHtml(f.name)}</div>
+  <div class="food-sub">${Math.round(Number(f.calories)||0)} kcal<span class="dot">·</span>脂肪 ${Math.round(Number(f.fat)||0)}g<span class="dot">·</span>重量 ${Math.round(Number(f.weight)||0)}g</div>
+  </div>
+  <button class="del-btn" data-i="${i}" aria-label="刪除">&times;</button>
+  </div>`).join("");
 
   list.querySelectorAll(".del-btn").forEach(b => {
     b.onclick = () => {
@@ -783,10 +833,10 @@ $("clearDayBtn").onclick = async () => {
 };
 
 /* ============ AI Analysis ============ */
-const SYSTEM_PROMPT = `你是一位專業的香港註冊營養師。用戶會用廣東話口語描述佢食咗嘅嘢。請將描述中嘅每樣食物/飲品拆解成獨立項目，並估算每項嘅卡路里(calories)同脂肪克數(fat)。
+const SYSTEM_PROMPT = `你是一位專業的香港註冊營養師。用戶會用廣東話口語描述佢食咗嘅嘢。請將描述中嘅每樣食物/飲品拆解成獨立項目，並估算每項嘅卡路里(calories)、脂肪克數(fat)同食物重量(weight)。
 嚴格要求：只回傳一個標準 JSON Array，唔好有任何其他文字、解釋或 Markdown 標記。
-格式必須係：[{"name":"食物名(中文)","calories":數字,"fat":數字}]
-calories 同 fat 必須係純數字(唔好帶單位)。如果用戶輸入無法辨識食物，回傳空陣列 []。`;
+格式必須係：[{"name":"食物名(中文)","calories":數字,"fat":數字,"weight":數字}]
+calories、fat 同 weight 必須係純數字(唔好帶單位)。weight 以克(g)為單位。如果用戶輸入無法辨識食物，回傳空陣列 []。`;
 
 function cleanJson(text) {
   if (!text) return "[]";
@@ -800,6 +850,27 @@ function cleanJson(text) {
     t = t.slice(start, end + 1);
   }
   return t;
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function getMimeType(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  const mimeMap = {
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'png': 'image/png',
+    'gif': 'image/gif',
+    'webp': 'image/webp'
+  };
+  return mimeMap[ext] || 'image/jpeg';
 }
 
 async function callGemini(userText) {
@@ -816,6 +887,43 @@ async function callGemini(userText) {
       generationConfig: { temperature: 0.4, responseMimeType: "application/json" }
     })
   });
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    throw new Error(`Gemini 錯誤 (${res.status})：${err.slice(0, 120)}`);
+  }
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error("Gemini 無回傳內容");
+  return text;
+}
+
+async function callGeminiWithImage(imageFile, remarks) {
+  const key = config.geminiKey;
+  if (!key) throw new Error("未設定 Gemini API Key");
+  const model = config.engine;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  
+  const base64Data = await fileToBase64(imageFile);
+  const mimeType = getMimeType(imageFile);
+  
+  const userPrompt = remarks ? `用戶拍攝的食物相片。用戶備註：${remarks}` : "用戶拍攝的食物相片。";
+  
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      contents: [{
+        role: "user",
+        parts: [
+          { inlineData: { mimeType, data: base64Data } },
+          { text: userPrompt }
+        ]
+      }],
+      generationConfig: { temperature: 0.4, responseMimeType: "application/json" }
+    })
+  });
+  
   if (!res.ok) {
     const err = await res.text().catch(() => "");
     throw new Error(`Gemini 錯誤 (${res.status})：${err.slice(0, 120)}`);
@@ -852,10 +960,9 @@ async function callDeepSeek(userText) {
   return text;
 }
 
-$("analyzeBtn").onclick = async () => {
-  const input = $("foodInput").value.trim();
-  if (!input) { toast("請先輸入你食咗咩"); return; }
+let inputMode = "text"; // "text" or "photo"
 
+$("analyzeBtn").onclick = async () => {
   const btn = $("analyzeBtn");
   const origHtml = btn.innerHTML;
   btn.disabled = true;
@@ -863,15 +970,29 @@ $("analyzeBtn").onclick = async () => {
 
   try {
     let raw;
-    if (config.engine.startsWith("gemini")) raw = await callGemini(input);
-    else raw = await callDeepSeek(input);
+    
+    if (inputMode === "text") {
+      const input = $("foodInput").value.trim();
+      if (!input) { toast("請先輸入你食咗咩"); return; }
+      if (config.engine.startsWith("gemini")) raw = await callGemini(input);
+      else raw = await callDeepSeek(input);
+    } else {
+      const photoInput = $("photoInput");
+      if (!photoInput.files || !photoInput.files[0]) { toast("請先拍照或選擇相片"); return; }
+      const remarks = $("photoRemarks").value.trim();
+      if (config.engine.startsWith("gemini")) {
+        raw = await callGeminiWithImage(photoInput.files[0], remarks);
+      } else {
+        toast("拍照識別只支援 Gemini 模型");
+        return;
+      }
+    }
 
     const cleaned = cleanJson(raw);
     let parsed;
     try {
       parsed = JSON.parse(cleaned);
     } catch (pe) {
-      // DeepSeek json_object may wrap in {items:[...]} — try to find array inside object
       try {
         const obj = JSON.parse(raw.replace(/```json/gi,"").replace(/```/g,"").trim());
         parsed = Array.isArray(obj) ? obj : (obj.items || obj.foods || obj.data || obj.result);
@@ -883,7 +1004,7 @@ $("analyzeBtn").onclick = async () => {
     if (!Array.isArray(parsed)) throw new Error("AI 回傳唔係有效列表");
     const items = parsed
       .filter(x => x && typeof x === "object" && x.name)
-      .map(x => ({ name: String(x.name), calories: Number(x.calories) || 0, fat: Number(x.fat) || 0 }));
+      .map(x => ({ name: String(x.name), calories: Number(x.calories) || 0, fat: Number(x.fat) || 0, weight: Number(x.weight) || 0 }));
 
     if (items.length === 0) { toast("AI 認唔到食物，試下講清楚啲"); return; }
 
@@ -891,6 +1012,9 @@ $("analyzeBtn").onclick = async () => {
     records[selectedDate].push(...items);
     saveRecords();
     $("foodInput").value = "";
+    $("photoInput").value = "";
+    $("photoRemarks").value = "";
+    document.getElementById("photoPreview").innerHTML = "";
     toast(`已加入 ${items.length} 項食物`);
     switchTab(2);
   } catch (e) {
@@ -900,6 +1024,34 @@ $("analyzeBtn").onclick = async () => {
     btn.disabled = false;
     btn.innerHTML = origHtml;
   }
+};
+
+/* ============ Mode Toggle ============ */
+$("textModeBtn").onclick = () => {
+  inputMode = "text";
+  $("textModeBtn").classList.add("mode-btn-active");
+  $("photoModeBtn").classList.remove("mode-btn-active");
+  document.getElementById("textMode").style.display = "block";
+  document.getElementById("photoMode").style.display = "none";
+};
+
+$("photoModeBtn").onclick = () => {
+  inputMode = "photo";
+  $("photoModeBtn").classList.add("mode-btn-active");
+  $("textModeBtn").classList.remove("mode-btn-active");
+  document.getElementById("textMode").style.display = "none";
+  document.getElementById("photoMode").style.display = "block";
+};
+
+$("photoInput").onchange = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    const preview = document.getElementById("photoPreview");
+    preview.innerHTML = `<img src="${evt.target.result}" alt="food photo" />`;
+  };
+  reader.readAsDataURL(file);
 };
 
 /* ============ Init ============ */
