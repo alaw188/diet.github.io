@@ -495,7 +495,9 @@
         <div class="row">
           <span class="row-label">引擎</span>
           <select class="field-input" id="engineSel">
-            <option value="gemini">Gemini 2.5 Flash</option>
+            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+            <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+            <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
             <option value="deepseek">DeepSeek Chat</option>
           </select>
         </div>
@@ -567,7 +569,7 @@ const STORE_KEY = "diet_records_v1";
 const CFG_KEY = "diet_config_v1";
 
 const defaultCfg = {
-  engine: "gemini",
+  engine: "gemini-2.5-flash",
   goalCal: 1800,
   goalFat: 60,
   geminiKey: "",
@@ -641,7 +643,7 @@ function renderNav() {
   const titles = { 1: "記低嘢食", 2: "查看進度", 3: "歷史月曆" };
   $("navTitle").textContent = titles[currentTab];
 
-  const engineName = config.engine === "gemini" ? "Gemini" : "DeepSeek";
+  const engineName = config.engine.startsWith("gemini") ? config.engine.replace("gemini-", "Gemini ") : "DeepSeek";
   const badge = $("aiBadge");
   if (isToday()) {
     badge.textContent = "核心：" + engineName;
@@ -803,7 +805,8 @@ function cleanJson(text) {
 async function callGemini(userText) {
   const key = config.geminiKey;
   if (!key) throw new Error("未設定 Gemini API Key");
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
+  const model = config.engine; // e.g., "gemini-2.5-flash", "gemini-3.1-flash-lite", "gemini-3.5-flash"
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": key },
@@ -860,7 +863,7 @@ $("analyzeBtn").onclick = async () => {
 
   try {
     let raw;
-    if (config.engine === "gemini") raw = await callGemini(input);
+    if (config.engine.startsWith("gemini")) raw = await callGemini(input);
     else raw = await callDeepSeek(input);
 
     const cleaned = cleanJson(raw);
