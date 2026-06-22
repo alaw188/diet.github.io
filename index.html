@@ -904,15 +904,14 @@
         <div class="card">
           <div class="row">
             <span class="row-label">Gemini Key</span>
-            <input type="password" class="field-input pw" id="geminiKey"
-              placeholder="AQ.Ab8RN6KOovRNAs0mUhX0uz-U38fiXB0dxkATccRGjwAFruOVVA" />
+            <input type="password" class="field-input pw" id="geminiKey" placeholder="未設定" />
           </div>
           <div class="row">
             <span class="row-label">DeepSeek Key</span>
             <input type="password" class="field-input pw" id="deepseekKey" placeholder="未設定" />
           </div>
         </div>
-        <p class="hint">所有設定及金鑰只儲存喺你嘅瀏覽器 (LocalStorage)，唔會上傳到任何伺服器。</p>
+        <p class="hint">所有設定及金鑰只儲存喺你嘅瀏覽器 (cLocalStorage)，唔會上傳到任何伺服器。</p>
       </section>
     </main>
 
@@ -964,13 +963,13 @@
     const STORE_KEY = "diet_records_v1";
     const CFG_KEY = "diet_config_v1";
 
-const defaultCfg = {
-  engine: "gemini-3.1-flash-lite",
-  goalCal: 1800,
-  goalFat: 60,
-  geminiKey: "AQ.Ab8RN6KOovRNAs0mUhX0uz-U38fiXB0dxkATccRGjwAFruOVVA",
-  deepseekKey: ""
-  };
+    const defaultCfg = {
+      engine: "gemini-3.1-flash-lite",
+      goalCal: 1800,
+      goalFat: 60,
+      geminiKey: "",
+      deepseekKey: ""
+    };
 
     let records = {};   // { "2026-06-22": [ {name, calories, fat}, ... ] }
     let config = { ...defaultCfg };
@@ -1150,7 +1149,7 @@ const defaultCfg = {
       selectedDate = todayStr();
       $("datePicker").value = selectedDate;
       renderAll();
-      toast("已���回��日");
+      toast("已�����回��日");
     };
 
     /* ============ Settings bindings ============ */
