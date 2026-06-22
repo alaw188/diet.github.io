@@ -742,13 +742,13 @@ function renderList() {
     return;
   }
   list.innerHTML = day.map((f, i) => `
-    <div class="food-row">
-      <div class="food-info">
-        <div class="food-name">${escapeHtml(f.name)}</div>
-        <div class="food-sub">${Math.round(Number(f.calories)||0)} kcal<span class="dot">·</span>脂肪 ${Math.round(Number(f.fat)||0)}g</div>
-      </div>
-      <button class="del-btn" data-i="${i}" aria-label="刪除">&times;</button>
-    </div>`).join("");
+  <div class="food-row">
+  <div class="food-info">
+  <div class="food-name">${escapeHtml(f.name)}</div>
+  <div class="food-sub">${Math.round(Number(f.calories)||0)} kcal<span class="dot">·</span>脂肪 ${Math.round(Number(f.fat)||0)}g<span class="dot">·</span>重量 ${Math.round(Number(f.weight)||0)}g</div>
+  </div>
+  <button class="del-btn" data-i="${i}" aria-label="刪除">&times;</button>
+  </div>`).join("");
 
   list.querySelectorAll(".del-btn").forEach(b => {
     b.onclick = () => {
@@ -833,10 +833,10 @@ $("clearDayBtn").onclick = async () => {
 };
 
 /* ============ AI Analysis ============ */
-const SYSTEM_PROMPT = `你是一位專業的香港註冊營養師。用戶會用廣東話口語描述佢食咗嘅嘢。請將描述中嘅每樣食物/飲品拆解成獨立項目，並估算每項嘅卡路里(calories)同脂肪克數(fat)。
+const SYSTEM_PROMPT = `你是一位專業的香港註冊營養師。用戶會用廣東話口語描述佢食咗嘅嘢。請將描述中嘅每樣食物/飲品拆解成獨立項目，並估算每項嘅卡路里(calories)、脂肪克數(fat)同食物重量(weight)。
 嚴格要求：只回傳一個標準 JSON Array，唔好有任何其他文字、解釋或 Markdown 標記。
-格式必須係：[{"name":"食物名(中文)","calories":數字,"fat":數字}]
-calories 同 fat 必須係純數字(唔好帶單位)。如果用戶輸入無法辨識食物，回傳空陣列 []。`;
+格式必須係：[{"name":"食物名(中文)","calories":數字,"fat":數字,"weight":數字}]
+calories、fat 同 weight 必須係純數字(唔好帶單位)。weight 以克(g)為單位。如果用戶輸入無法辨識食物，回傳空陣列 []。`;
 
 function cleanJson(text) {
   if (!text) return "[]";
@@ -1004,7 +1004,7 @@ $("analyzeBtn").onclick = async () => {
     if (!Array.isArray(parsed)) throw new Error("AI 回傳唔係有效列表");
     const items = parsed
       .filter(x => x && typeof x === "object" && x.name)
-      .map(x => ({ name: String(x.name), calories: Number(x.calories) || 0, fat: Number(x.fat) || 0 }));
+      .map(x => ({ name: String(x.name), calories: Number(x.calories) || 0, fat: Number(x.fat) || 0, weight: Number(x.weight) || 0 }));
 
     if (items.length === 0) { toast("AI 認唔到食物，試下講清楚啲"); return; }
 
