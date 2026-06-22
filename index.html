@@ -1223,7 +1223,7 @@ calories、fat 同 weight 必須係純數字(唔好帶單位)。weight 以克(g)
       const key = config.geminiKey;
       if (!key) throw new Error("未設定 Gemini API Key");
       const model = config.engine; // e.g., "gemini-2.5-flash", "gemini-3.1-flash-lite", "gemini-3.5-flash"
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+      const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent`;
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-goog-api-key": key },
@@ -1247,7 +1247,7 @@ calories、fat 同 weight 必須係純數字(唔好帶單位)。weight 以克(g)
       const key = config.geminiKey;
       if (!key) throw new Error("未設定 Gemini API Key");
       const model = config.engine;
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+      const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent`;
 
       const base64Data = await fileToBase64(imageFile);
       const mimeType = getMimeType(imageFile);
