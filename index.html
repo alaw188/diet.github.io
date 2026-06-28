@@ -965,7 +965,6 @@
                             <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                             <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
                             <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
-                            <option value="openai">OpenAI GPT-5</option>
                         </select>
                     </div>
                 </div>
@@ -991,10 +990,6 @@
                     <div class="row">
                         <span class="row-label">Gemini Key</span>
                         <input type="password" class="field-input pw" id="geminiKey" placeholder="未設定" />
-                    </div>
-                    <div class="row">
-                        <span class="row-label">Xfyun Key</span>
-                        <input type="password" class="field-input pw" id="xfyunKey" placeholder="未設定" />
                     </div>
                 </div>
                 <p class="hint">所有設定及金鑰只儲存喺你嘅瀏覽器 (cLocalStorage)，唔會上傳到任何伺服器。</p>
@@ -1060,8 +1055,7 @@
         goalCal: 1800,
         goalFat: 60,
         goalProt: 60,
-        geminiKey: "",
-        xfyunKey: ""
+        geminiKey: ""
       };
 
       let records = {};   // { "2026-06-22": [ {name, calories, fat, weight}, ... ] }
@@ -1131,7 +1125,7 @@
         const titles = { 1: "記低嘢食", 2: "查看進度", 3: "歷史月曆" };
         $("navTitle").textContent = titles[currentTab];
 
-        const engineName = config.engine.startsWith("gemini") ? config.engine.replace("gemini-", "Gemini ") : "Qwen3.6-35B-A3B (Xfyun)";
+        const engineName = config.engine.replace("gemini-", "Gemini ");
         const badge = $("aiBadge");
         if (isToday()) {
           badge.textContent = "核心：" + engineName;
@@ -1257,7 +1251,6 @@
         $("goalFat").value = config.goalFat;
         $("goalProt").value = config.goalProt;
         $("geminiKey").value = config.geminiKey;
-        $("xfyunKey").value = config.xfyunKey;
         $("datePicker").value = selectedDate;
       }
 
@@ -1297,7 +1290,6 @@
       $("goalFat").oninput = (e) => { config.goalFat = Number(e.target.value) || 0; saveConfig(); renderDashboard(); };
       $("goalProt").oninput = (e) => { config.goalProt = Number(e.target.value) || 0; saveConfig(); renderDashboard(); };
       $("geminiKey").oninput = (e) => { config.geminiKey = e.target.value.trim(); saveConfig(); };
-      $("xfyunKey").oninput = (e) => { config.xfyunKey = e.target.value.trim(); saveConfig(); };
       $("datePicker").onchange = (e) => {
         if (!e.target.value) return;
         selectedDate = e.target.value;
@@ -1427,7 +1419,7 @@
       async function callXfyun(userText) {
         const key = config.xfyunKey;
         if (!key) throw new Error("未設定 Xfyun API Key");
-        const res = await fetch("https://maas-api.cn-huabei-1.xf-yun.com/v2/chat/completions", {
+        const res = await fetch("/xfyun/v2/chat/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
           body: JSON.stringify({
@@ -1456,7 +1448,7 @@
         const base64Data = await fileToBase64(imageFile);
         const mimeType = getMimeType(imageFile);
         const userPrompt = remarks ? `用戶拍攝的食物相片。用戶備註：${remarks}` : "用戶拍攝的食物相片。";
-        const res = await fetch("https://maas-api.cn-huabei-1.xf-yun.com/v2/chat/completions", {
+        const res = await fetch("/xfyun/v2/chat/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
           body: JSON.stringify({
@@ -1500,7 +1492,6 @@
             const input = $("foodInput").value.trim();
             if (!input) { toast("請先輸入你食咗咩"); return; }
             if (config.engine.startsWith("gemini")) raw = await callGemini(input);
-            else raw = await callXfyun(input);
           } else {
             const photoInput = $("photoInput");
             if (!photoInput.files || !photoInput.files[0]) { toast("請先拍照或選擇相片"); return; }
@@ -1508,7 +1499,8 @@
             if (config.engine.startsWith("gemini")) {
               raw = await callGeminiWithImage(photoInput.files[0], remarks);
             } else {
-              raw = await callXfyunWithImage(photoInput.files[0], remarks);
+              toast("拍照識別只支援 Gemini 模型");
+              return;
             }
           }
 
